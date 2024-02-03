@@ -6,6 +6,7 @@ export function onSubmitCalcForm(e){
     const eqString = `
         ${n} x ${n} = ${n * n}
     `;
+    
 
     const li = document.createElement('li');
     li.textContent = eqString;

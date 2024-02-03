@@ -20,5 +20,6 @@ window.onpopstate = function(e){
     const pathname = window.location.pathname;
     const hash = window.location.hash;
     routing(pathname, hash);
+    
 }
 

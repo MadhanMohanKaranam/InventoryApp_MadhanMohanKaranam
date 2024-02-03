@@ -11,6 +11,7 @@ export async function signinPageView(){
     divWrapper.innerHTML = await response.text();
 
     // attach form subumit event listener
+    
     const form  = divWrapper.getElementsByTagName('form')[0];
     form.onsubmit = signinFirebase;
 

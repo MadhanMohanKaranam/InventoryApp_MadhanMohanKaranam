@@ -8,7 +8,6 @@ export async function homePageView(){
         root.innerHTML = await protectedView();
         return;
     }
-   
     const response = await fetch('/view/templates/home_page_template.html',
     
                     {cache: 'no-store'}  );

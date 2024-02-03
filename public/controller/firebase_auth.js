@@ -9,6 +9,7 @@ import { userInfo } from "../view/elements.js";
 
 const auth = getAuth(app);
 
+
 export let currentUser = null;
 
 export  async function signinFirebase(e){
@@ -26,6 +27,7 @@ export  async function signinFirebase(e){
     }
     
 }
+
 
 export function attachAuthStateChangeObserver(){
     onAuthStateChanged(auth, authStateChangeListener);
@@ -60,6 +62,7 @@ function authStateChangeListener(user){
         signinPageView();
     }
 }
+
 
 export async function signOutFirebase(){
     await signOut(auth);
