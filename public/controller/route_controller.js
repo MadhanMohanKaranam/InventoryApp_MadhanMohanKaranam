@@ -12,7 +12,6 @@ export const routes = [
 ];
 
 export function routing(pathname, hash){
-    
     const route = routes.find(r => r.path == pathname);
     if(route){
         if(hash && hash.length > 1){
