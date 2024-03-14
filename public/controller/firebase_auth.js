@@ -1,5 +1,5 @@
 import { getAuth, signInWithEmailAndPassword, 
-    onAuthStateChanged, signOut, } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
+    onAuthStateChanged, signOut, } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js"
 import { app } from "./firebase_core.js"
 import { DEV } from "../model/constants.js";
 import { homePageView } from "../view/home_page.js";
