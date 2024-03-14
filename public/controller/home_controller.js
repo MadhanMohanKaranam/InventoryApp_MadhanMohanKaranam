@@ -3,7 +3,7 @@ import { DEV } from "../model/constants.js";
 import { buildCard, buildCardText, createToDoItemElement } from "../view/home_page.js";
 import { progressMessage } from "../view/progress_message.js";
 import { currentUser } from "./firebase_auth.js";
-import { addToDoItem, addToDoTitle, getToDoItemList } from "./firestore_controller.js";
+import { addToDoItem, addToDoTitle, deleteToDoItem, getToDoItemList, updateToDoItem } from "./firestore_controller.js";
 import { ToDoItem } from "../model/ToDoitem.js";
 
 export async function onSubmitCreateForm(e){
@@ -107,10 +107,43 @@ export function onMouseOverItem(e) {
 export function onMouseOutItem(e) {
     const span = e.currentTarget.children[0];
     const input = e.currentTarget.children[1];
+    input.value = span.textContent;
     span.classList.replace('d-none', 'd-block');
     input.classList.replace('d-block', 'd-none');
 }
 
-export function onKeyDownUpdateItem(e) {
-    console.log(e.target.value)
+export async function onKeyDownUpdateItem(e) {
+    if(e.key != 'Enter') return;
+
+    const li = e.target.parentElement;
+    const progress = progressMessage('Updating...');
+    li.parentElement.prepend(progress);
+
+    const content = e.target.value.trim();
+    if(content.length == 0) {
+        //delete the item if empty
+        try {
+            await deleteToDoItem(li.id)
+            li.remove();
+        } catch (e) {
+            if (DEV) console.log('Failed to delete',e);
+            alert('Failed to delete: '+ JSON.stringify(e));
+            
+        }
+    } else {
+        //update the item
+        const update = {content};
+        try {
+            await updateToDoItem(li.id, update);
+            const span = li.children[0];
+            span.textContent = content;
+            const input = li.children[1];
+            input.value = content;
+        } catch (e) {
+            if(DEV) console.log('Failed to update', e);
+            alert('Failed to update: '+JSON.stringify(e));
+        }
+    }
+
+    progress.remove();
 }
