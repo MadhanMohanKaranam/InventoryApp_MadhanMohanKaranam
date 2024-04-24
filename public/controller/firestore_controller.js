@@ -2,70 +2,50 @@ import {
     getFirestore,
     collection,
     addDoc,
-    query,
-    where,
+    query,where,
     orderBy,
-    getDocs,
-    updateDoc,
-    deleteDoc,
-    doc,
+    getDocs, 
+    deleteDoc, 
+    doc, 
+    updateDoc
+} from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
- } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js"
+const TO_INVENTORY = 'to_inventory';
+import { app } from "./firebase_core.js";
+import { ToInventory } from "../model/ToInventory.js";
 
- const TODO_TITLE_COLLECTION = 'todo_titles';
- const TODO_ITEM_COLLECTION = 'todo_items';
+const db = getFirestore(app);
 
- import { app } from"./firebase_core.js"
-import { ToDoItem } from "../model/ToDoitem.js";
-import { ToDoTitle } from "../model/ToDoTitle.js";
-
-
- const db = getFirestore(app);
-
-export async function addToDoTitle(todoTitle) {
-    const docRef = await addDoc(collection(db, TODO_TITLE_COLLECTION), todoTitle.toFirestore());
-    return docRef.id;
-} 
-
-export async function addToDoItem(todoItem) {
-    const docRef = await addDoc(collection(db, TODO_ITEM_COLLECTION), todoItem.toFirestore());
-    return docRef.id;
-} 
-
-export async function getToDoItemList(titleDocId, uid) {
-    let itemList = [];
-    const q = query(collection(db, TODO_ITEM_COLLECTION),
-        where('uid', '==', uid),
-        where('titleId', '==', titleDocId),
-        orderBy('timestamp'),
-    );
-    const snapShot = await getDocs(q);
-    snapShot.forEach(doc =>{
-        const item = new ToDoItem(doc.data(), doc.id)
-        itemList.push(item);
-    });
-    return itemList;
+export async function addToInventory(toInventory){
+        const docRef = await addDoc(collection(db,TO_INVENTORY),toInventory.toFirestore());
+        return docRef.id;
 }
 
-export async function getToDoTitleList(uid) {
-    let titleList = [];
-    const q = query(collection(db, TODO_TITLE_COLLECTION),
-        where('uid', '==', uid),
-        orderBy('timestamp','desc'));
-    const snapShot = await getDocs(q);
-    snapShot.forEach(doc =>{
-        const t = new ToDoTitle(doc.data(), doc.id);
-        titleList.push(t);
-    });
-    return titleList;
+export async function getToInventoryList(email){
+        let inventoryList = [];
+        const coll = collection(db, TO_INVENTORY)
+        const q = query(coll, 
+            where('email', '==', email), 
+            orderBy('name', 'asc'),);
+        const snapShot = await getDocs(q);
+        snapShot.forEach( doc => {
+            const p = new ToInventory(doc.data(),doc.id);
+            inventoryList.push(p);
+        });
+        return inventoryList;
 }
 
-export async function updateToDoItem(docId, update) {
-    const docRef = doc(db, TODO_ITEM_COLLECTION, docId);
-    await updateDoc(docRef, update);
+export async function deleteToInventory(docId) {
+    const docRef = doc(db, TO_INVENTORY, docId);
+    await deleteDoc(docRef); // Return the docId after deletion for reference
 }
 
-export async function deleteToDoItem(itemId) {
-    const docRef = doc(db, TODO_ITEM_COLLECTION, itemId);
-    await deleteDoc(docRef);
+export async function updateQuantityInFirestore(docId, update){
+    const docRef =  doc(db,TO_INVENTORY,docId);
+    await updateDoc(docRef,update);
 }
+
+
+
+
+

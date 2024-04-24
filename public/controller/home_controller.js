@@ -1,149 +1,116 @@
-import { ToDoTitle } from "../model/ToDoTitle.js";
-import { DEV } from "../model/constants.js";
-import { buildCard, buildCardText, createToDoItemElement } from "../view/home_page.js";
-import { progressMessage } from "../view/progress_message.js";
+import { ToInventory } from "../model/ToInventory.js";
 import { currentUser } from "./firebase_auth.js";
-import { addToDoItem, addToDoTitle, deleteToDoItem, getToDoItemList, updateToDoItem } from "./firestore_controller.js";
-import { ToDoItem } from "../model/ToDoitem.js";
+import { getToInventoryList, addToInventory, deleteToInventory, updateQuantityInFirestore } from "./firestore_controller.js";
+import { DEV } from "../model/constants.js";
+import { progressMessage } from "../view/progress_message.js";
+import { buildCard, homePageView, insertAlphabetically, removeCardFromUI } from "../view/home_page.js";
 
-export async function onSubmitCreateForm(e){
+let inventoryList = null;
+
+export async function onSubmitCreateForm(e) {
     e.preventDefault();
-    const title = e.target.title.value;
-    const uid = currentUser.uid;
+    const buttonLabel = e.submitter.innerHTML;
+    e.submitter.disabled = true;
+    e.submitter.innerHTML = ' Wait...';
+
+    const name = e.target.title.value.toLowerCase();
+    const email = currentUser.email;
     const timestamp = Date.now();
-    const todoTitle = new ToDoTitle({ title, uid, timestamp});
 
-    const progress = progressMessage('Creating ...');
-    e.target.prepend(progress);
-
-    let docId;
     try {
-        docId = await addToDoTitle(todoTitle);
-        todoTitle.set_docId(docId);
-    } catch (e) {
-        if(DEV) console.log('failed to create: ',e);
-        alert('Failed to create:' +JSON.stringify(e));
+        if (!inventoryList) {
+            inventoryList = await getToInventoryList(email);
+        }
+
+        const existingItem = inventoryList.find(item => item.name === name);
+        if (existingItem) {
+            alert(`${existingItem.name} already exists. Cannot create a new one.`);
+            return;
+        }
+
+        const quantity = 1;
+        const toInventory = new ToInventory({ email, name, timestamp, quantity });
+
+        const progress = progressMessage('Creating...');
+        e.target.prepend(progress);
+
+        const docId = await addToInventory(toInventory);
+        toInventory.set_docId(docId);
         progress.remove();
-        return;
 
+        const container = document.getElementById('todo-container');
+        container.prepend(buildCard(toInventory));
+        e.target.title.value = '';
+    } catch (error) {
+        console.error('Failed to create item:', error);
+        alert('Failed to create item. Please try again.');
+    } finally {
+        e.submitter.innerHTML = buttonLabel;
+        e.submitter.disabled = false;
     }
-    progress.remove();
-
-    const container = document.getElementById('todo-container');
-    container.prepend(buildCard(todoTitle));
-    e.target.title.value = '';
-
 }
 
-export async function onclikExpandButton(e) {
+export function onClickIncrement(e) {
     const button = e.target;
-    const cardBody = button.parentElement;
-    if(button.textContent == '+') {
-        const cardText = cardBody.querySelector('.card-text');
-        if(!cardText) {
-            //read all existing todoItems
-            const progress = progressMessage('Loading item list ...');
-            button.parentElement.prepend(progress);
-            let itemList;
-            try {
-                itemList = await getToDoItemList(cardBody.id, currentUser.uid);
-            } catch (e) {
-                if(DEV) console.log('Failed to get item list',e);
-                alert('Failed to get item list: '+ JSON.stringify(e));
-                progress.remove();
-                return;
-                
+    const quantityElement = button.parentElement.querySelector('p');
+    let quantity = parseInt(quantityElement.textContent);
+
+    if (button.textContent === '+') {
+        quantity++;
+    } else if (button.textContent === '-') {
+        quantity = Math.max(0, quantity - 1);
+    }
+
+    quantityElement.textContent = quantity.toString();
+}
+
+export async function onClickUpdate(e, toInventory) {
+    e.preventDefault();
+    const card = document.getElementById(toInventory.docId);
+    const quantityElement = card.querySelector('p');
+    const quantity = parseInt(quantityElement.textContent);
+    const docId = toInventory.docId;
+
+    if (quantity === 0) {
+        const r = confirm('Are you sure you want to delete this item permanently?');
+        if (!r) return;
+
+        try {
+            await deleteToInventory(docId);
+            removeCardFromUI(toInventory);
+            homePageView();
+        } catch (error) {
+            console.error('Failed to delete item:', error);
+            alert('Failed to delete item. Please try again.');
+        }
+    } else {
+        try {
+            await updateQuantityInFirestore(docId, { quantity });
+            alert('Item quantity updated successfully!');
+            const updatedInventory = await getToInventoryList(currentUser.email);
+            const updatedItem = updatedInventory.find(item => item.docId === docId);
+            if (updatedItem) {
+                quantityElement.textContent = updatedItem.quantity.toString();
             }
-            progress.remove();
-            cardBody.appendChild(buildCardText(cardBody.id, itemList));
-        } else {
-            cardText.classList.replace('d-none','d-block');
+        } catch (error) {
+            console.error('Failed to update item quantity:', error);
+            alert('Failed to update item quantity. Please try again.');
         }
-        button.textContent = '-';
-    } else {
-        const cardText = cardBody.querySelector('.card-text');
-        cardText.classList.replace('d-block', 'd-none');
-        button.textContent = '+';
     }
 }
 
-export async function onKeydownNewItemInput(e, titleDocId) {
-    if(e.key != "Enter") return;
-    const content = e.target.value;
-    const titleId = titleDocId;
-    const uid = currentUser.uid;
-    const timestamp = Date.now();
-    const todoItem = new ToDoItem({
-        titleId, uid, content, timestamp,
-    });
-
-    const progress = progressMessage('Adding item ...');
-    e.target.parentElement.prepend(progress);
+export async function onClickCancel(e, toInventory) {
+    const card = document.getElementById(toInventory.docId);
+    const quantityElement = card.querySelector('p');
+    
     try {
-        const docId = await addToDoItem(todoItem);
-        todoItem.set_docId(docId);
-    } catch (e) {
-        if(DEV) console.log('Failed to add item',e);
-        alert('Failed to save ToDo Item: '+JSON.stringify(e));
-        progress.remove();
-        return;   
-    }
-
-    progress.remove();
-
-    const li = createToDoItemElement(todoItem);
-    const cardBody = document.getElementById(e.target.id.substring(5));
-    cardBody.querySelector('ul').appendChild(li);
-    e.target.value = '';
-}
-
-export function onMouseOverItem(e) {
-    const span = e.currentTarget.children[0];
-    const input = e.currentTarget.children[1];
-    span.classList.replace('d-block', 'd-none');
-    input.classList.replace('d-none', 'd-block');
-}
-
-export function onMouseOutItem(e) {
-    const span = e.currentTarget.children[0];
-    const input = e.currentTarget.children[1];
-    input.value = span.textContent;
-    span.classList.replace('d-none', 'd-block');
-    input.classList.replace('d-block', 'd-none');
-}
-
-export async function onKeyDownUpdateItem(e) {
-    if(e.key != 'Enter') return;
-
-    const li = e.target.parentElement;
-    const progress = progressMessage('Updating...');
-    li.parentElement.prepend(progress);
-
-    const content = e.target.value.trim();
-    if(content.length == 0) {
-        //delete the item if empty
-        try {
-            await deleteToDoItem(li.id)
-            li.remove();
-        } catch (e) {
-            if (DEV) console.log('Failed to delete',e);
-            alert('Failed to delete: '+ JSON.stringify(e));
-            
+        const updatedInventory = await getToInventoryList(currentUser.email);
+        const updatedItem = updatedInventory.find(item => item.docId === toInventory.docId);
+        if (updatedItem) {
+            quantityElement.textContent = updatedItem.quantity.toString();
         }
-    } else {
-        //update the item
-        const update = {content};
-        try {
-            await updateToDoItem(li.id, update);
-            const span = li.children[0];
-            span.textContent = content;
-            const input = li.children[1];
-            input.value = content;
-        } catch (e) {
-            if(DEV) console.log('Failed to update', e);
-            alert('Failed to update: '+JSON.stringify(e));
-        }
+    } catch (error) {
+        console.error('Failed to retrieve item quantity:', error);
+        alert('Failed to retrieve item quantity. Please try again.');
     }
-
-    progress.remove();
 }
