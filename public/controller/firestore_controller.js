@@ -12,16 +12,16 @@ import {
 
 const TO_INVENTORY = 'to_inventory';
 import { app } from "./firebase_core.js";
-import { ToInventory } from "../model/ToInventory.js";
+import { ToInventory } from "../model/Inventory.js";
 
 const db = getFirestore(app);
 
-export async function addToInventory(toInventory){
+export async function addInventory(toInventory){
         const docRef = await addDoc(collection(db,TO_INVENTORY),toInventory.toFirestore());
         return docRef.id;
 }
 
-export async function getToInventoryList(email){
+export async function getInventoryList(email){
         let inventoryList = [];
         const coll = collection(db, TO_INVENTORY)
         const q = query(coll, 
@@ -35,7 +35,7 @@ export async function getToInventoryList(email){
         return inventoryList;
 }
 
-export async function deleteToInventory(docId) {
+export async function deleteInventory(docId) {
     const docRef = doc(db, TO_INVENTORY, docId);
     await deleteDoc(docRef); // Return the docId after deletion for reference
 }

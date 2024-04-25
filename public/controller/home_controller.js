@@ -1,116 +1,165 @@
-import { ToInventory } from "../model/ToInventory.js";
+import { ToInventory } from "../model/Inventory.js";
 import { currentUser } from "./firebase_auth.js";
-import { getToInventoryList, addToInventory, deleteToInventory, updateQuantityInFirestore } from "./firestore_controller.js";
+import { getInventoryList, addInventory, deleteInventory, updateQuantityInFirestore } from "./firestore_controller.js";
 import { DEV } from "../model/constants.js";
-import { progressMessage } from "../view/progress_message.js";
-import { buildCard, homePageView, insertAlphabetically, removeCardFromUI } from "../view/home_page.js";
+import { creatingMessage } from "../view/creating_message.js";
+import { buildItem, homePageView, insertAlphabeticalWise, removeItem } from "../view/home_page.js";
 
-let inventoryList = null;
+
 
 export async function onSubmitCreateForm(e) {
     e.preventDefault();
-    const buttonLabel = e.submitter.innerHTML;
-    e.submitter.disabled = true;
-    e.submitter.innerHTML = ' Wait...';
 
-    const name = e.target.title.value.toLowerCase();
+    // Validation
+    const name = e.target.title.value.trim().toLowerCase();
+    if (!name) {
+        alert('Please enter a valid name.');
+        return;
+    }
+
+    // Disable create button
+   /* const button = e.submitter;
+    button.disabled = true;
+    const originalButtonText = button.innerHTML;
+    button.innerHTML = 'Creating...';*/
+
+    let progress = creatingMessage('creating...');
+    e.target.prepend(progress);
+
     const email = currentUser.email;
     const timestamp = Date.now();
 
     try {
-        if (!inventoryList) {
-            inventoryList = await getToInventoryList(email);
-        }
-
+        // Check if item already exists
+        const inventoryList = await getInventoryList(email);
         const existingItem = inventoryList.find(item => item.name === name);
         if (existingItem) {
-            alert(`${existingItem.name} already exists. Cannot create a new one.`);
-            return;
+            throw new Error(`${existingItem.name} already exists. Cannot create a new one.`);
         }
 
-        const quantity = 1;
-        const toInventory = new ToInventory({ email, name, timestamp, quantity });
-
-        const progress = progressMessage('Creating...');
-        e.target.prepend(progress);
-
-        const docId = await addToInventory(toInventory);
+        // Create new item
+        const toInventory = new ToInventory({ email, name, timestamp, quantity: 1 });
+        const docId = await addInventory(toInventory);
         toInventory.set_docId(docId);
-        progress.remove();
 
+        // Update UI
         const container = document.getElementById('todo-container');
-        container.prepend(buildCard(toInventory));
-        e.target.title.value = '';
+        container.prepend(buildItem(toInventory));
+        insertAlphabeticalWise(toInventory);
+        homePageView();
+
     } catch (error) {
-        console.error('Failed to create item:', error);
-        alert('Failed to create item. Please try again.');
-    } finally {
-        e.submitter.innerHTML = buttonLabel;
-        e.submitter.disabled = false;
-    }
+        //console.error('Failed to create item:', error);
+        alert('Failed to create item: ' + error.message);
+    } 
+
+    // Clear input field
+    e.target.title.value = '';
 }
 
-export function onClickIncrement(e) {
-    const button = e.target;
-    const quantityElement = button.parentElement.querySelector('p');
-    let quantity = parseInt(quantityElement.textContent);
 
-    if (button.textContent === '+') {
-        quantity++;
-    } else if (button.textContent === '-') {
-        quantity = Math.max(0, quantity - 1);
+
+export async function onClickIncrement(e) {
+    // Ensure the target element is a button
+    if (e.target.tagName !== 'BUTTON') {
+        console.error('Invalid target element. Expected a button.');
+        return;
     }
 
-    quantityElement.textContent = quantity.toString();
+    const button = e.target;
+    const quantityElement = button.parentElement.querySelector('p');
+    let quantity = parseInt(quantityElement.innerText);
+
+    if (button.innerText === '+') {
+        quantity++;
+    } else if (button.innerText === '-') {
+        // Ensure quantity is not reduced below zero
+        if (quantity > 0) {
+            quantity--;
+        } else {
+            // Provide feedback to the user when trying to reduce quantity below zero
+            alert('Quantity cannot be less than zero.');
+            return;
+        }
+    }
+
+    quantityElement.innerText = quantity.toString();
 }
 
 export async function onClickUpdate(e, toInventory) {
-    e.preventDefault();
+    e.preventDefault(e);
+
     const card = document.getElementById(toInventory.docId);
     const quantityElement = card.querySelector('p');
-    const quantity = parseInt(quantityElement.textContent);
+    let quantity = parseInt(quantityElement.textContent);
     const docId = toInventory.docId;
 
     if (quantity === 0) {
-        const r = confirm('Are you sure you want to delete this item permanently?');
-        if (!r) return;
+        const confirmation = confirm('Are you sure you want to delete this item permanently?');
+        if (!confirmation) return;
 
-        try {
-            await deleteToInventory(docId);
-            removeCardFromUI(toInventory);
+        const deleteResult = await deleteItem(docId);
+        if (deleteResult.success) {
+            removeItem(toInventory);
             homePageView();
-        } catch (error) {
-            console.error('Failed to delete item:', error);
-            alert('Failed to delete item. Please try again.');
+            alert('Item deleted successfully!');
+        } else {
+            console.error('Failed to delete item:', deleteResult.error);
+            alert('Failed to delete item: ' + JSON.stringify(deleteResult.error));
         }
     } else {
-        try {
-            await updateQuantityInFirestore(docId, { quantity });
-            alert('Item quantity updated successfully!');
-            const updatedInventory = await getToInventoryList(currentUser.email);
-            const updatedItem = updatedInventory.find(item => item.docId === docId);
-            if (updatedItem) {
-                quantityElement.textContent = updatedItem.quantity.toString();
-            }
-        } catch (error) {
-            console.error('Failed to update item quantity:', error);
-            alert('Failed to update item quantity. Please try again.');
+        const updateResult = await updateQuantity(docId, quantity);
+        if (updateResult.success) {
+            alert('Item quantity updated ');
+        } else {
+            console.error('Failed to update item quantity:', updateResult.error);
+            alert('Failed to update item quantity: ' + JSON.stringify(updateResult.error));
         }
+    }
+}
+
+async function deleteItem(docId) {
+    try {
+        await deleteInventory(docId);
+        return { success: true };
+    } catch (error) {
+        return { success: false, error };
+    }
+}
+
+async function updateQuantity(docId, newQuantity) {
+    try {
+        await updateQuantityInFirestore(docId, { quantity: newQuantity });
+        return { success: true };
+    } catch (error) {
+        return { success: false, error };
     }
 }
 
 export async function onClickCancel(e, toInventory) {
+
+    //const quantityElement = document.getElementById(toInventory.docId).querySelector('p');
     const card = document.getElementById(toInventory.docId);
     const quantityElement = card.querySelector('p');
+
     
     try {
-        const updatedInventory = await getToInventoryList(currentUser.email);
-        const updatedItem = updatedInventory.find(item => item.docId === toInventory.docId);
+        const updatedItem = await fetchUpdatedItem(currentUser.email, toInventory.docId);
         if (updatedItem) {
             quantityElement.textContent = updatedItem.quantity.toString();
         }
     } catch (error) {
-        console.error('Failed to retrieve item quantity:', error);
-        alert('Failed to retrieve item quantity. Please try again.');
+        console.error('Failed to retrieve quantity:', error);
+        alert('Failed to retrieve quantity: ' + JSON.stringify(error));
     }
 }
+
+async function fetchUpdatedItem(email, card) {
+    try {
+        const updatedInventory = await getInventoryList(email);
+        return updatedInventory.find(item => item.docId === card);
+    } catch (error) {
+        throw error;
+    }
+}
+
