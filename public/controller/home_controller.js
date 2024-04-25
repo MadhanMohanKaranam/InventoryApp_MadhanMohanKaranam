@@ -17,12 +17,6 @@ export async function onSubmitCreateForm(e) {
         return;
     }
 
-    // Disable create button
-   /* const button = e.submitter;
-    button.disabled = true;
-    const originalButtonText = button.innerHTML;
-    button.innerHTML = 'Creating...';*/
-
     let progress = creatingMessage('creating...');
     e.target.prepend(progress);
 
