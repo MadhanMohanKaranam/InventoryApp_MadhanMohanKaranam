@@ -17,32 +17,42 @@ import { ToInventory } from "../model/Inventory.js";
 const db = getFirestore(app);
 
 export async function addInventory(toInventory){
-        const docRef = await addDoc(collection(db,TO_INVENTORY),toInventory.toFirestore());
+    try {
+        const docRef = await addDoc(collection(db, 'to_inventory'), toInventory.toFirestore());
         return docRef.id;
+    } catch (error) {
+        console.error("Error adding inventory:", error);
+        throw error;
+    }
 }
 
 export async function getInventoryList(email){
-        let inventoryList = [];
-        const coll = collection(db, TO_INVENTORY)
-        const q = query(coll, 
-            where('email', '==', email), 
-            orderBy('name', 'asc'),);
-        const snapShot = await getDocs(q);
-        snapShot.forEach( doc => {
-            const p = new ToInventory(doc.data(),doc.id);
-            inventoryList.push(p);
-        });
-        return inventoryList;
+    try {
+        const snapshot = await getDocs(query(collection(db, 'to_inventory'), where('email', '==', email), orderBy('name', 'asc')));
+        return snapshot.docs.map(doc => new ToInventory(doc.data(), doc.id));
+    } catch (error) {
+        console.error("Error getting inventory list:", error);
+        throw error;
+    }
 }
 
 export async function deleteInventory(docId) {
-    const docRef = doc(db, TO_INVENTORY, docId);
-    await deleteDoc(docRef); // Return the docId after deletion for reference
+    try {
+        await deleteDoc(doc(db, 'to_inventory', docId));
+        return docId; // Return the docId after deletion for reference
+    } catch (error) {
+        console.error("Error deleting inventory:", error);
+        throw error;
+    }
 }
 
-export async function updateQuantityInFirestore(docId, update){
-    const docRef =  doc(db,TO_INVENTORY,docId);
-    await updateDoc(docRef,update);
+export async function updateQuantityInFirestoreDatabase(docId, update){
+    try {
+        await updateDoc(doc(db, 'to_inventory', docId), update);
+    } catch (error) {
+        console.error("Error updating quantity in Firestore database:", error);
+        throw error;
+    }
 }
 
 
