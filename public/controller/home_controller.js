@@ -18,7 +18,7 @@ export async function onSubmitCreateForm(e) {
     }
 
     let progress = creatingMessage('creating...');
-    e.target.prepend(progress);
+    
 
     const email = currentUser.email;
     const timestamp = Date.now();
@@ -32,6 +32,7 @@ export async function onSubmitCreateForm(e) {
         }
 
         // Create new item
+        e.target.prepend(progress);
         const toInventory = new ToInventory({ email, name, timestamp, quantity: 1 });
         const docId = await addInventory(toInventory);
         toInventory.set_docId(docId);
