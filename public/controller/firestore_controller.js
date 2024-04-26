@@ -10,7 +10,7 @@ import {
     updateDoc
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-const TO_INVENTORY = 'to_inventory';
+//const TO_INVENTORY = 'to_inventory';
 import { app } from "./firebase_core.js";
 import { ToInventory } from "../model/Inventory.js";
 //import { currentUser } from "./firebase_auth.js";
@@ -23,6 +23,14 @@ export async function addInventory(toInventory){
         return docRef.id;
     } catch (error) {
         console.error("Error adding inventory:", error);
+        throw error;
+    }
+}
+export async function updateQuantityInFirestoreDatabase(docId, update){
+    try {
+        await updateDoc(doc(db, 'to_inventory', docId), update);
+    } catch (error) {
+        console.error("Error updating quantity in Firestore database:", error);
         throw error;
     }
 }
@@ -47,14 +55,6 @@ export async function deleteInventory(docId) {
     }
 }
 
-export async function updateQuantityInFirestoreDatabase(docId, update){
-    try {
-        await updateDoc(doc(db, 'to_inventory', docId), update);
-    } catch (error) {
-        console.error("Error updating quantity in Firestore database:", error);
-        throw error;
-    }
-}
 
 
 
