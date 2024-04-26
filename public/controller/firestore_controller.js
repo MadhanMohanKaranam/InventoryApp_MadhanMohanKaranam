@@ -13,6 +13,7 @@ import {
 const TO_INVENTORY = 'to_inventory';
 import { app } from "./firebase_core.js";
 import { ToInventory } from "../model/Inventory.js";
+//import { currentUser } from "./firebase_auth.js";
 
 const db = getFirestore(app);
 
@@ -54,7 +55,6 @@ export async function updateQuantityInFirestoreDatabase(docId, update){
         throw error;
     }
 }
-
 
 
 

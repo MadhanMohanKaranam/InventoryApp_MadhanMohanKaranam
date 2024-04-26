@@ -12,6 +12,11 @@ export function removeItem(toInventory) {
     if(index >= 0)
         inventoryList.splice(index,1);
 }
+
+export function resetInventoryList(){
+    inventoryList =null;
+}
+
 export function insertAlphabeticalWise(item) {
     const index = inventoryList.findIndex(existingItem => item.name <= existingItem.name);
     if (index === -1) {
@@ -96,4 +101,5 @@ export function buildItem(toInventory) {
 
     return container;
 }
+
 

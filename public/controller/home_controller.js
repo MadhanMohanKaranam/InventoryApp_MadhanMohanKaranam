@@ -1,6 +1,6 @@
 import { ToInventory } from "../model/Inventory.js";
 import { currentUser } from "./firebase_auth.js";
-import { getInventoryList, addInventory, deleteInventory, updateQuantityInFirestoreDatabase } from "./firestore_controller.js";
+import {getInventoryList, addInventory, deleteInventory, updateQuantityInFirestoreDatabase } from "./firestore_controller.js";
 import { DEV } from "../model/constants.js";
 import { creatingMessage } from "../view/creating_message.js";
 import { buildItem, homePageView, insertAlphabeticalWise, removeItem } from "../view/home_page.js";
